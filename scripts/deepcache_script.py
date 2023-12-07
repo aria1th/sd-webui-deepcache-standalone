@@ -28,6 +28,8 @@ class ScriptDeepCache(scripts.Script):
 
     def before_hr(self, p:processing.StableDiffusionProcessing, *args):
         print("DeepCache before_hr")
+        if self.session is not None:
+            self.session.enumerated_timestep["value"] = -1 # reset enumerated timestep
         if not shared.opts.deepcache_hr_reuse:
             self.detach_deepcache()
         if shared.opts.deepcache_enable:

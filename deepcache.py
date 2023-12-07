@@ -13,6 +13,8 @@ class DeepCacheParams:
     cache_in_level: int = 0
     cache_enable_step: int = 0
     full_run_step_rate: int = 5
+    # cache_latents_cpu: bool = False
+    # cache_latents_hires: bool = False
 
 class DeepCacheSession:
     """
@@ -25,6 +27,8 @@ class DeepCacheSession:
         self.cache_success_count = 0
         self.cache_fail_count = 0
         self.fail_reasons = defaultdict(int)
+        self.success_reasons = defaultdict(int)
+        self.enumerated_timestep = {"value": -1}
 
     def log_skip(self, reason:str = 'disabled_by_default'):
         self.fail_reasons[reason] += 1
@@ -38,6 +42,8 @@ class DeepCacheSession:
         print(f"DeepCache success rate: {self.cache_success_count / total * 100}% ({self.cache_success_count}/{total})")
         for fail_reasons, count in self.fail_reasons.items():
             print(f"  {fail_reasons}: {count}")
+        for success_reasons, count in self.success_reasons.items():
+            print(f"  {success_reasons}: {count}")
 
     def deepcache_hook_model(self, unet, params:DeepCacheParams):
         """
@@ -47,11 +53,14 @@ class DeepCacheSession:
         # caching level 0 = no caching, idx for resnet layers
         cache_enable_step = params.cache_enable_step
         full_run_step_rate = params.full_run_step_rate # '5' means run full model every 5 steps
+        if full_run_step_rate < 1:
+            print(f"DeepCache disabled due to full_run_step_rate {full_run_step_rate} < 1 but enabled by user")
+            return # disabled
         if getattr(unet, '_deepcache_hooked', False):
             return  # already hooked
         CACHE_LAST = self.CACHE_LAST
         self.stored_forward = unet.forward
-        enumerated_timestep = -1
+        self.enumerated_timestep["value"] = -1
         valid_caching_in_level = min(caching_level, len(unet.input_blocks) - 1)
         valid_caching_out_level = min(valid_caching_in_level, len(unet.output_blocks) - 1)
         # set to max if invalid
@@ -61,14 +70,11 @@ class DeepCacheSession:
             """
             Registers cache
             """
-            if timestep < min(CACHE_LAST.get("timestep", {0})):
-                # reset cache, we are going back in time
-                print(f"Resetting cache for timestep {timestep}")
-                CACHE_LAST.clear()
-                CACHE_LAST["timestep"] = {0}
             CACHE_LAST["timestep"].add(timestep)
             assert h is not None, f"Cannot cache None"
+            # maybe move to cpu and load later for low vram?
             CACHE_LAST["last"] = h
+            CACHE_LAST[f"timestep_{timestep}"] = h
             CACHE_LAST["real_timestep"] = real_timestep
         def get_cache(current_timestep:int, real_timestep:float) -> Optional[torch.Tensor]:
             """
@@ -83,6 +89,13 @@ class DeepCacheSession:
                 self.cache_fail_count += 1
                 return None
             elif current_timestep % full_run_step_rate == 0:
+                if f"timestep_{current_timestep}" in CACHE_LAST:
+                    self.cache_success_count += 1
+                    self.success_reasons['cached_exact'] += 1
+                    CACHE_LAST["last"] = CACHE_LAST[f"timestep_{current_timestep}"] # update last
+                    return CACHE_LAST[f"timestep_{current_timestep}"]
+                else:
+                    print(f"Cache not found for timestep {current_timestep}\n available: {list(CACHE_LAST.keys())}")
                 self.fail_reasons['full_run_step_rate_division'] += 1
                 self.cache_fail_count += 1
                 return None
@@ -90,29 +103,30 @@ class DeepCacheSession:
                 self.fail_reasons['cache_outdated'] += 1
                 self.cache_fail_count += 1
                 return None
+            # check if cache exists
             if "last" in CACHE_LAST:
+                self.success_reasons['cached_last'] += 1
                 self.cache_success_count += 1
                 return CACHE_LAST["last"]
             self.fail_reasons['not_cached'] += 1
             self.cache_fail_count += 1
             return None
         def hijacked_unet_forward(x, timesteps=None, context=None, y=None, **kwargs):
-            cache_cond = lambda : enumerated_timestep % full_run_step_rate == 0 or enumerated_timestep > cache_enable_step
-            use_cache_cond = lambda : enumerated_timestep > cache_enable_step and enumerated_timestep % full_run_step_rate != 0
-            nonlocal enumerated_timestep, CACHE_LAST
+            cache_cond = lambda : self.enumerated_timestep["value"] % full_run_step_rate == 0 or self.enumerated_timestep["value"] > cache_enable_step
+            use_cache_cond = lambda : self.enumerated_timestep["value"] > cache_enable_step and self.enumerated_timestep["value"] % full_run_step_rate != 0
+            nonlocal CACHE_LAST
             assert (y is not None) == (
                 hasattr(unet, 'num_classes') and unet.num_classes is not None #v2 or xl
             ), "must specify y if and only if the model is class-conditional"
             hs = []
             t_emb = timestep_embedding(timesteps, unet.model_channels, repeat_only=False).to(unet.dtype)
             emb = unet.time_embed(t_emb)
-
             if hasattr(unet, 'num_classes') and unet.num_classes is not None:
                 assert y.shape[0] == x.shape[0]
                 emb = emb + unet.label_emb(y)
             real_timestep = timesteps[0].item()
             h = x.type(unet.dtype)
-            cached_h = get_cache(enumerated_timestep, real_timestep)
+            cached_h = get_cache(self.enumerated_timestep["value"], real_timestep)
             for id, module in enumerate(unet.input_blocks):
                 self.log_skip('run_before_cache_input_block')
                 h = forward_timestep_embed(module, h, emb, context)
@@ -129,7 +143,7 @@ class DeepCacheSession:
                     h = cached_h
                 elif cache_cond() and idx == relative_cache_level:
                     # put cache
-                    put_cache(h, enumerated_timestep, real_timestep)
+                    put_cache(h, self.enumerated_timestep["value"], real_timestep)
                 elif cached_h is not None and use_cache_cond() and idx < relative_cache_level:
                     # skip, h is already cached
                     continue
@@ -142,7 +156,7 @@ class DeepCacheSession:
                     output_shape = None
                 h = forward_timestep_embed(module, h, emb, context, output_shape=output_shape)
             h = h.type(x.dtype)
-            enumerated_timestep += 1
+            self.enumerated_timestep["value"] += 1
             if unet.predict_codebook_ids:
                 return unet.id_predictor(h)
             else:
