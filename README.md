@@ -1,13 +1,14 @@
 # sd-webui-deepcache-standalone
 New implementation - should be tested though
-https://github.com/aria1th/sd-webui-deepcache-standalone
 
 512x704 test, with 40% disable for initial steps
 ```
 Steps: 23, Sampler: DPM++ SDE Karras, CFG scale: 8, Seed: 3335110679, Size: 512x704, Model hash: 8c838299ab, VAE hash: 79e225b92f, VAE: blessed2.vae.pt, Denoising strength: 0.5, Hypertile U-Net: True, Hypertile U-Net max depth: 2, Hypertile U-Net max tile size: 64, Hypertile U-Net swap size: 12, Hypertile VAE: True, Hypertile VAE swap size: 2, Hires upscale: 2, Hires upscaler: R-ESRGAN 4x+ Anime6B, Version: v1.7.0-RC-16-geb2b1679
 ```
 ![image](https://github.com/AUTOMATIC1111/stable-diffusion-webui/assets/35677394/66868212-87b5-4734-989d-c7c4882069ee)
-
+**Enabled, Reusing cache for HR steps**
+![grid-0671-3335110679-1girl](https://github.com/AUTOMATIC1111/stable-diffusion-webui/assets/35677394/295bf626-e89c-45c8-8f3c-ab03767b5dad)
+**5.68it/s**
 
 **Enabled:**
 ![grid-0660-3335110679-1girl](https://github.com/AUTOMATIC1111/stable-diffusion-webui/assets/35677394/2dd00da6-5588-4275-bbb1-8b825d661dce)
@@ -30,3 +31,4 @@ Steps: 23, Sampler: DPM++ SDE Karras, CFG scale: 8, Seed: 3335110679, Size: 512x
 SD XL : Being tested.
 
 
+**Literally achieves 4.5x boost!**
