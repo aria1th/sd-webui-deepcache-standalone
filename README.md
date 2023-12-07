@@ -1,6 +1,5 @@
 # sd-webui-deepcache-standalone
-New implementation - should be tested though
-
+## SD 1.5
 512x704 test, with 40% disable for initial steps
 ```
 Steps: 23, Sampler: DPM++ SDE Karras, CFG scale: 8, Seed: 3335110679, Size: 512x704, Model hash: 8c838299ab, VAE hash: 79e225b92f, VAE: blessed2.vae.pt, Denoising strength: 0.5, Hypertile U-Net: True, Hypertile U-Net max depth: 2, Hypertile U-Net max tile size: 64, Hypertile U-Net swap size: 12, Hypertile VAE: True, Hypertile VAE swap size: 2, Hires upscale: 2, Hires upscaler: R-ESRGAN 4x+ Anime6B, Version: v1.7.0-RC-16-geb2b1679
@@ -28,7 +27,19 @@ Steps: 23, Sampler: DPM++ SDE Karras, CFG scale: 8, Seed: 3335110679, Size: 512x
 
 
 
-SD XL : Being tested.
+## SD XL : 
+```
+1girl
+Negative prompt: easynegative, nsfw
+Steps: 23, Sampler: DPM++ SDE Karras, CFG scale: 8, Seed: 3335110679, Size: 768x768, Model hash: 9a0157cad2, VAE hash: 235745af8d, VAE: sdxl_vae(1).safetensors, Denoising strength: 0.5, Hypertile U-Net: True, Hypertile U-Net max depth: 2, Hypertile U-Net max tile size: 64, Hypertile U-Net swap size: 12, Hypertile VAE: True, Hypertile VAE swap size: 2, Hires upscale: 2, Hires upscaler: R-ESRGAN 4x+ Anime6B, Version: v1.7.0-RC-16-geb2b1679
+```
+** DeepCache + HR + Hypertile**
 
+![grid-0672-3335110679-1girl](https://github.com/AUTOMATIC1111/stable-diffusion-webui/assets/35677394/e08f068d-6d6f-40a8-83d2-b6bef8bb7ba7)
+**2.65it/s**
+16.41GB (fp16)
 
-**Literally achieves 4.5x boost!**
+**Without optimization**
+![grid-0673-3335110679-1girl](https://github.com/AUTOMATIC1111/stable-diffusion-webui/assets/35677394/cb9ab9ac-a441-4e82-84b1-2b94b064ff60)
+
+**1.47it/s**
