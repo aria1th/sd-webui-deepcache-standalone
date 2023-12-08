@@ -1,4 +1,7 @@
 # sd-webui-deepcache-standalone
+## Note : this does not work with ControlNet or UNet-forward-hijacking Extensions!!
+## See https://github.com/horseee/DeepCache/issues/4
+
 ## SD 1.5
 512x704 test, with 40% disable for initial steps
 ```
