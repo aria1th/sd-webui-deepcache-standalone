@@ -23,7 +23,7 @@ class ScriptDeepCache(scripts.Script):
     def process_batch(self, p:processing.StableDiffusionProcessing, *args, **kwargs):
         print("DeepCache process")
         self.detach_deepcache()
-        if shared.opts.deepcache_enable:
+        if shared.opts.deepcache_enable_pass == "both passes":
             self.configure_deepcache(self.get_deepcache_params(p.steps))
 
     def before_hr(self, p:processing.StableDiffusionProcessing, *args):
@@ -32,7 +32,7 @@ class ScriptDeepCache(scripts.Script):
             self.session.enumerated_timestep["value"] = -1 # reset enumerated timestep
         if not shared.opts.deepcache_hr_reuse:
             self.detach_deepcache()
-        if shared.opts.deepcache_enable:
+        if shared.opts.deepcache_enable_pass != "disable":
             hr_steps = getattr(p, 'hr_second_pass_steps', 0) or p.steps
             enable_step = int(shared.opts.deepcache_cache_enable_step_percentage_hr * hr_steps)
             self.configure_deepcache(self.get_deepcache_params(getattr(p, 'hr_second_pass_steps', 0) or p.steps, enable_step_at = enable_step)) # use second pass steps if available
@@ -63,7 +63,7 @@ def on_ui_settings():
         "deepcache_explanation": shared.OptionHTML("""
     <a href='https://github.com/horseee/DeepCache'>DeepCache</a> optimizes by caching the results of mid-blocks, which is known for high level features, and reusing them in the next forward pass.
     """),
-        "deepcache_enable": shared.OptionInfo(False, "Enable DeepCache").info("noticeable change in details of the generated picture"),
+        "deepcache_enable_pass": shared.OptionInfo("disable", "Enable DeepCache for", gr.Radio, {"choices": ["disable", "second pass", "both passes"]}, infotext="Pass to DeepCache").info("noticeable change in details of the generated picture"),
         "deepcache_cache_resnet_level": shared.OptionInfo(0, "Cache Resnet level", gr.Slider, {"minimum": 0, "maximum": 10, "step": 1}).info("Deeper = fewer layers cached"),
         "deepcache_cache_enable_step_percentage": shared.OptionInfo(0.4, "Deepcaches is enabled after the step percentage", gr.Slider, {"minimum": 0, "maximum": 1}).info("Percentage of initial steps to disable deepcache"),
         "deepcache_full_run_step_rate": shared.OptionInfo(5, "Refreshes caches when step is divisible by number", gr.Slider, {"minimum": 0, "maximum": 1000, "step": 1}).info("5 = refresh caches every 5 steps"),
