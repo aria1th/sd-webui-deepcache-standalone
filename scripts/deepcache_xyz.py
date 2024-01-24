@@ -47,9 +47,17 @@ def float_applier(value_name:str, min_range:float = -1, max_range:float = -1):
         opts.data[value_name] = float(x)
     return apply_float
 
+def field_applier(value_name: str):
+    def validate(value_name:str, value:str):
+        assert isinstance(value, str), f"Value {value} for {value_name} must be string"
+    def apply_field(p, x, xs):
+        validate(value_name, x)
+        opts.data[value_name] = x
+    return apply_field
+
 def add_axis_options():
     extra_axis_options = [
-        xyz_grid.AxisOption("[DeepCache] Enabled", str, bool_applier("deepcache_enable"), choices=xyz_grid.boolean_choice(reverse=True)),
+        xyz_grid.AxisOption("[DeepCache] Enable DeepCache for", str, field_applier("deepcache_enable_pass"), choices=lambda: ["disable", "second pass", "both passes"]),
         xyz_grid.AxisOption("[DeepCache] Cache Resnet level", int, int_applier("deepcache_cache_resnet_level", 0, 10)),
         xyz_grid.AxisOption("[DeepCache] Cache Disable initial step percentage", float, float_applier("deepcache_cache_enable_step_percentage", 0, 1)),
         xyz_grid.AxisOption("[DeepCache] Cache Refresh Rate", int, int_applier("deepcache_full_run_step_rate", 0, 1000)),
