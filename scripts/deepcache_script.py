@@ -21,13 +21,11 @@ class ScriptDeepCache(scripts.Script):
         )
 
     def process_batch(self, p:processing.StableDiffusionProcessing, *args, **kwargs):
-        print("DeepCache process")
         self.detach_deepcache()
         if shared.opts.deepcache_enable_pass == "both passes":
             self.configure_deepcache(self.get_deepcache_params(p.steps))
 
     def before_hr(self, p:processing.StableDiffusionProcessing, *args):
-        print("DeepCache before_hr")
         if self.session is not None:
             self.session.enumerated_timestep["value"] = -1 # reset enumerated timestep
         if not shared.opts.deepcache_hr_reuse:
@@ -38,7 +36,6 @@ class ScriptDeepCache(scripts.Script):
             self.configure_deepcache(self.get_deepcache_params(getattr(p, 'hr_second_pass_steps', 0) or p.steps, enable_step_at = enable_step)) # use second pass steps if available
 
     def postprocess_batch(self, p:processing.StableDiffusionProcessing, *args, **kwargs):
-        print("DeepCache postprocess")
         self.detach_deepcache()
 
     def configure_deepcache(self, params:DeepCacheParams):
@@ -50,10 +47,8 @@ class ScriptDeepCache(scripts.Script):
         )
 
     def detach_deepcache(self):
-        print("Detaching DeepCache")
         if self.session is None:
             return
-        self.session.report()
         self.session.detach()
         self.session = None
 
