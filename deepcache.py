@@ -7,6 +7,7 @@ from collections import defaultdict
 import torch
 from ldm.modules.diffusionmodules.openaimodel import timestep_embedding
 from scripts.forward_timestep_embed_patch import forward_timestep_embed
+from modules import devices
 
 from logging import getLogger
 @dataclass
@@ -120,13 +121,13 @@ class DeepCacheSession:
                 hasattr(unet, 'num_classes') and unet.num_classes is not None #v2 or xl
             ), "must specify y if and only if the model is class-conditional"
             hs = []
-            t_emb = timestep_embedding(timesteps, unet.model_channels, repeat_only=False).to(unet.dtype)
+            t_emb = timestep_embedding(timesteps, unet.model_channels, repeat_only=False).to(devices.dtype_unet)
             emb = unet.time_embed(t_emb)
             if hasattr(unet, 'num_classes') and unet.num_classes is not None:
                 assert y.shape[0] == x.shape[0]
                 emb = emb + unet.label_emb(y)
             real_timestep = timesteps[0].item()
-            h = x.type(unet.dtype)
+            h = x.type(devices.dtype_unet)
             cached_h = get_cache(self.enumerated_timestep["value"], real_timestep)
             for id, module in enumerate(unet.input_blocks):
                 self.log_skip('run_before_cache_input_block')
